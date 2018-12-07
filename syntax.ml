@@ -168,6 +168,9 @@ let rec getbinding fi ctx i =
         Printf.sprintf "Variable lookup failure: offset: %d, ctx size: %d" in
       error fi (msg i (List.length ctx))
 
+let searchFromContextTerm fi ctx i = match getbinding fi ctx i with
+    TmAbbBind(t) -> t
+  | _ -> error fi ("searchFromContextType: No term for binding " ^ (index2name fi ctx i))
 (** ---------------------------------------------------------------------- **)
 (** Substitution **)
 
@@ -324,4 +327,4 @@ let prbinding ctx b = match b with
 let printtype tp = match tp with
     TpBool -> pr "Bool"
   | TpNat -> pr "Nat" 
-  |_ -> pr "lol"
+  | _ -> pr "lol"

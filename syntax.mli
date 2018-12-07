@@ -52,7 +52,7 @@ val index2name : info -> context -> int -> string
 val getbinding : info -> context -> int -> binding
 val name2index : info -> context -> string -> int
 val isnamebound : context -> string -> bool
-
+val searchFromContextTerm : info -> context -> int -> term
 
 (** Shifting and substitution **)
 val termShift: int -> term -> term

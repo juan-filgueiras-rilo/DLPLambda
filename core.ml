@@ -144,15 +144,21 @@ let rec gettype ctx t = match t with
       then let tpBody = (gettype ctx t2) in
         if tpBody = (gettype ctx t3)
         then tpBody
-        else error fi "Tipos diferentes en las ramas del if"
-      else error fi "La condicion no es de tipo Bool"
+        else error fi "tipos diferentes en las ramas del if"
+      else error fi "la condicion no es de tipo Bool"
   | t when isnumericval ctx t  -> 
       TpNat
-
+  | TmVar(fi,i,_) -> gettype ctx (searchFromContextTerm fi ctx i)
+  | TmApp(fi,t1,t2) -> 
+      let tpT1 = (gettype ctx t1) in
+      let tpT2 = (gettype ctx t2) in
+      (match tpT1 with
+          TpApp(tpT11,tpT12) -> 
+            if tpT2 = tpT11 then tpT12
+            else error fi "input parameter doesn't match"
+        | _ -> error fi "expected type for application")
   | TmSucc(fi,t1) ->
-      let t1' = gettype ctx t1 in
-        if (t1' = TpNat)
-        then TpNat
-        else if (isval ctx t1)
-          then error fi "Funcion de Nat en Nat"
-          else gettype ctx t1
+      let tp = gettype ctx t1 in
+        match tp with
+            TpNat -> TpNat
+          | _ -> error fi "expected value of type Nat" 
