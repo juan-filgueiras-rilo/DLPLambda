@@ -81,8 +81,12 @@ let alreadyImported = ref ([] : string list)
    Results are printed a new context is returned *)
 let rec process_command ctx cmd = match cmd with
   | Eval(fi,t) -> 
+      let tp = gettype ctx t in
       let t' = eval ctx t in
       printtm_ATerm true ctx t'; 
+      force_newline();
+      pr ": ";
+      printtype tp;
       force_newline();
       ctx
   | Bind(fi,x,bind) -> 

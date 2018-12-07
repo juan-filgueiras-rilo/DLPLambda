@@ -134,6 +134,25 @@ let evalbinding ctx b = match b with
   | bind -> bind
 
 (** ------------------------   TYPING  ------------------------ **)
-(* let rec typeof ctx t = match t with
-    TmTrue(_) -> TpBool
-  | TmFalse(_) -> TpBool *)
+let rec gettype ctx t = match t with
+    TmTrue(_) ->
+      TpBool
+  | TmFalse(_) ->
+      TpBool
+  | TmIf(fi,t1,t2,t3) ->
+      if ((gettype ctx t1) = TpBool)
+      then let tpBody = (gettype ctx t2) in
+        if tpBody = (gettype ctx t3)
+        then tpBody
+        else error fi "Tipos diferentes en las ramas del if"
+      else error fi "La condicion no es de tipo Bool"
+  | t when isnumericval ctx t  -> 
+      TpNat
+
+  | TmSucc(fi,t1) ->
+      let t1' = gettype ctx t1 in
+        if (t1' = TpNat)
+        then TpNat
+        else if (isval ctx t1)
+          then error fi "Funcion de Nat en Nat"
+          else gettype ctx t1

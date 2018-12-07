@@ -56,10 +56,14 @@ in
    Results are printed a new context is returned *)
 let rec process_command ctx cmd = match cmd with
   | Eval(fi,t) ->
-        let t' = eval ctx t in
-        printtm_ATerm true ctx t'; 
-        force_newline();
-        ctx
+      let tp = gettype ctx t in
+      let t' = eval ctx t in
+      printtm_ATerm true ctx t'; 
+      force_newline();
+      pr ": ";
+      printtype tp;
+      force_newline();
+      ctx
   | Bind(fi,x,bind) -> 
           let bind' = evalbinding ctx bind in
           pr "%s" x; pr " "; prbinding ctx bind'; force_newline(); 

@@ -9,10 +9,11 @@
 
 open Support.Pervasive
 open Support.Error
-(* 
+
 type _type =
     TpBool
-  | TpNat *)
+  | TpNat
+  | TpApp of _type * _type
 
 (** Data type definitions **)
 type term =
@@ -61,6 +62,7 @@ val termSubstTop: term -> term -> term
 val printtm: context -> term -> unit
 val printtm_ATerm: bool -> context -> term -> unit
 val prbinding : context -> binding -> unit
+val printtype : _type -> unit
 
 (** Misc **)
 val tmInfo: term -> info

@@ -24,6 +24,7 @@ open Support.Pervasive
 type _type =
     TpBool
   | TpNat
+  | TpApp of _type * _type
 
 (* Terms recognized by the program *)
 type term =
@@ -320,4 +321,7 @@ let prbinding ctx b = match b with
     NameBind -> ()
   | TmAbbBind(t) -> pr "= "; printtm ctx t 
 
-
+let printtype tp = match tp with
+    TpBool -> pr "Bool"
+  | TpNat -> pr "Nat" 
+  |_ -> pr "lol"
