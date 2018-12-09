@@ -69,6 +69,11 @@ let reservedWords = [
   ("->", fun i -> Parser.ARROW i);
   ("=>", fun i -> Parser.DARROW i);
   ("==>", fun i -> Parser.DDARROW i);
+
+  (*Types*)
+  ("Bool", fun i -> Parser.TBOOL i);
+  ("Nat", fun i -> Parser.TNAT i);
+
 ]
 
 (* Support functions *)

@@ -86,7 +86,7 @@ let rec process_command ctx cmd = match cmd with
       printtm_ATerm true ctx t'; 
       force_newline();
       pr ": ";
-      printtype tp;
+      printtype ctx t (Some(tp));
       force_newline();
       ctx
   | Bind(fi,x,bind) -> 

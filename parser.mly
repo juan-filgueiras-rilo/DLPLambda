@@ -14,6 +14,7 @@
 open Support.Error
 open Support.Pervasive
 open Syntax
+open Core
 %}
 
 /* ---------------------------------------------------------------------- */
@@ -41,6 +42,10 @@ open Syntax
 %token <Support.Error.info> ISZERO
 %token <Support.Error.info> LET
 %token <Support.Error.info> IN
+
+%token <Support.Error.info> TBOOL
+%token <Support.Error.info> TNAT
+
 
 /* Identifier and constant value tokens */
 %token <string Support.Error.withinfo> UCID  /* uppercase-initial */
@@ -127,6 +132,23 @@ toplevel :
           let cmds,ctx = $3 ctx in
           cmd::cmds,ctx }
 
+Type :
+  AppType
+    { $1 }
+
+AType :
+  LPAREN Type RPAREN  
+    { $2 }
+  | TBOOL
+    {fun ctx -> TpBool}
+  | TNAT
+    {fun ctx -> TpNat}
+
+AppType :
+  AType ARROW AppType
+    { fun ctx  -> TpApp($1 ctx, $3 ctx)} 
+  | AType
+    { $1 }
 /* A top-level command */
 Command :
   | Term 
@@ -148,7 +170,7 @@ Binder :
   | EQ Term
     /* If the binder is in the form "= Term", it is returned as 
       a TmAbbBind of Term on current context. */
-      { fun ctx -> TmAbbBind($2 ctx) }
+      { fun ctx -> TmAbbBind($2 ctx, None) }
 
 Term :
     AppTerm
@@ -158,17 +180,17 @@ Term :
     /* An "if-then-else" Term is returned as a TmIf command 
       to evaluate the Terms on current context. */
       { fun ctx -> TmIf($1, $2 ctx, $4 ctx, $6 ctx) }
-  | LAMBDA LCID DOT Term 
+  | LAMBDA LCID COLON Type DOT Term 
     /* An abstraction matching "lambda word . Term" adds word to the context
       and returns a TmAbs with the word and term on the new context. */
       { fun ctx ->
           let ctx1 = addname ctx $2.v in
-          TmAbs($1, $2.v, $4 ctx1) }
-  | LAMBDA USCORE DOT Term 
+          TmAbs($1, $2.v, $4 ctx, $6 ctx1) }
+  | LAMBDA USCORE COLON Type DOT Term 
     /* An abstraction using underscore (_) is treated like a variable whose name can be disregarded. */
       { fun ctx ->
           let ctx1 = addname ctx "_" in
-          TmAbs($1, "_", $4 ctx1) }
+          TmAbs($1, "_", $4 ctx, $6 ctx1) }
   | LET LCID EQ Term IN Term
     /* A "let word = Term in Term" clause is returned as a TmLet of the terms applied on current context 
       and the name of the last term added to the context */

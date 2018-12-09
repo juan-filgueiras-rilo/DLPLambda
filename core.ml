@@ -37,7 +37,7 @@ let rec isval ctx t = match t with
   | TmFloat _  -> true
   | TmString _  -> true
   | t when isnumericval ctx t  -> true
-  | TmAbs(_,_,_) -> true
+  | TmAbs(_,_,_,_) -> true
   | TmRecord(_,fields) -> List.for_all (fun (l,ti) -> isval ctx ti) fields
   | _ -> false
 
@@ -52,9 +52,9 @@ let rec eval1 ctx t = match t with
       TmIf(fi, t1', t2, t3)
   | TmVar(fi,n,_) ->
       (match getbinding fi ctx n with
-          TmAbbBind(t) -> t 
+          TmAbbBind(t,_) -> t 
         | _ -> raise NoRuleApplies)
-  | TmApp(fi,TmAbs(_,x,t12),v2) when isval ctx v2 ->
+  | TmApp(fi,TmAbs(_,x,_,t12),v2) when isval ctx v2 ->
       termSubstTop v2 t12
   | TmApp(fi,v1,t2) when isval ctx v1 ->
       let t2' = eval1 ctx t2 in
@@ -128,17 +128,21 @@ let rec eval ctx t =
 
 (* evalbinding evaluates the term contained by the binding until it cannot be evaluated anymore *)
 let evalbinding ctx b = match b with
-    TmAbbBind(t) ->
+    TmAbbBind(t,tp) ->
       let t' = eval ctx t in 
-      TmAbbBind(t')
+      TmAbbBind(t',tp)
   | bind -> bind
 
 (** ------------------------   TYPING  ------------------------ **)
 let rec gettype ctx t = match t with
-    TmTrue(_) ->
+    TmTrue(fi) ->
       TpBool
-  | TmFalse(_) ->
+  | TmFalse(fi) ->
       TpBool
+  | TmZero(fi) -> 
+      TpNat
+(*   | t when isnumericval ctx t  -> 
+      TpNat *)
   | TmIf(fi,t1,t2,t3) ->
       if ((gettype ctx t1) = TpBool)
       then let tpBody = (gettype ctx t2) in
@@ -146,9 +150,26 @@ let rec gettype ctx t = match t with
         then tpBody
         else error fi "tipos diferentes en las ramas del if"
       else error fi "la condicion no es de tipo Bool"
-  | t when isnumericval ctx t  -> 
-      TpNat
-  | TmVar(fi,i,_) -> gettype ctx (searchFromContextTerm fi ctx i)
+  | TmSucc(fi,t1) ->
+      let tp = gettype ctx t1 in
+        (match tp with
+            TpNat -> TpNat
+          | _ -> error fi "expected value of type Nat for succ")
+  | TmPred(fi,t1) ->
+        let tp = gettype ctx t1 in
+        (match tp with
+            TpNat -> TpNat
+          | _ -> error fi "expected value of type Nat for pred")
+  | TmIsZero(fi,t1) ->
+      let tp = gettype ctx t1 in
+        (match tp with
+            TpNat -> TpBool
+          | _ -> error fi "expected value of type Nat for iszero")
+  | TmVar(fi,i,_) -> searchFromContextType fi ctx i
+  | TmAbs(fi,x,tpT1,t1) ->
+      let ctx' = addbinding ctx x (TmAbbBind(t1,Some(tpT1))) in
+      let tpT2 = gettype ctx' t1 in
+        TpApp(tpT1,tpT2) 
   | TmApp(fi,t1,t2) -> 
       let tpT1 = (gettype ctx t1) in
       let tpT2 = (gettype ctx t2) in
@@ -157,8 +178,3 @@ let rec gettype ctx t = match t with
             if tpT2 = tpT11 then tpT12
             else error fi "input parameter doesn't match"
         | _ -> error fi "expected type for application")
-  | TmSucc(fi,t1) ->
-      let tp = gettype ctx t1 in
-        match tp with
-            TpNat -> TpNat
-          | _ -> error fi "expected value of type Nat" 

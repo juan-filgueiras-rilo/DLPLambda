@@ -21,7 +21,7 @@ type term =
   | TmFalse of info
   | TmIf of info * term * term * term
   | TmVar of info * int * int
-  | TmAbs of info * string * term
+  | TmAbs of info * string * _type * term
   | TmApp of info * term * term
   | TmRecord of info * (string * term) list
   | TmProj of info * term * string
@@ -36,7 +36,8 @@ type term =
 
 type binding =
     NameBind 
-  | TmAbbBind of term
+  | TmAbbBind of term * (_type option)(* 
+  | TypeBind of _type *)
 
 type command =
   | Eval of info * term
@@ -53,6 +54,7 @@ val getbinding : info -> context -> int -> binding
 val name2index : info -> context -> string -> int
 val isnamebound : context -> string -> bool
 val searchFromContextTerm : info -> context -> int -> term
+val searchFromContextType : info -> context -> int -> _type
 
 (** Shifting and substitution **)
 val termShift: int -> term -> term
@@ -62,8 +64,7 @@ val termSubstTop: term -> term -> term
 val printtm: context -> term -> unit
 val printtm_ATerm: bool -> context -> term -> unit
 val prbinding : context -> binding -> unit
-val printtype : _type -> unit
+val printtype : context -> term -> (_type option) -> unit
 
 (** Misc **)
 val tmInfo: term -> info
-

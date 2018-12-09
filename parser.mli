@@ -11,6 +11,8 @@ type token =
   | ISZERO of (Support.Error.info)
   | LET of (Support.Error.info)
   | IN of (Support.Error.info)
+  | TBOOL of (Support.Error.info)
+  | TNAT of (Support.Error.info)
   | UCID of (string Support.Error.withinfo)
   | LCID of (string Support.Error.withinfo)
   | INTV of (int Support.Error.withinfo)

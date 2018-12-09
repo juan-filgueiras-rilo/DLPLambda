@@ -52,6 +52,14 @@ let parseLine line =
 in
   result
 
+let checkbinding fi ctx b = match b with
+    NameBind -> NameBind
+  | TmAbbBind(t,None) -> TmAbbBind(t, Some(gettype ctx t))
+  | TmAbbBind(t,Some(tyT)) -> TmAbbBind(t,Some(tyT))(* 
+     let tyT' = gettype ctx t in
+     if tyeqv ctx tyT' tyT then TmAbbBind(t,Some(tyT))
+     else error fi "Type of binding does not match declared type" *)
+
 (* processes the given command. Used by both methods process_file and process_line.
    Results are printed a new context is returned *)
 let rec process_command ctx cmd = match cmd with
@@ -61,14 +69,15 @@ let rec process_command ctx cmd = match cmd with
       printtm_ATerm true ctx t'; 
       force_newline();
       pr ": ";
-      printtype tp;
+      printtype ctx t (Some(tp));
       force_newline();
       ctx
   | Bind(fi,x,bind) -> 
-          let bind' = evalbinding ctx bind in
-          pr "%s" x; pr " "; prbinding ctx bind'; force_newline(); 
-          update_identifiers x bind';
-          addbinding ctx x bind'
+      let bind = checkbinding fi ctx bind in
+      let bind' = evalbinding ctx bind in
+      pr "%s" x; pr " "; prbinding ctx bind'; (* prbindingtype ctx bind';*)force_newline(); 
+      update_identifiers x bind';
+      addbinding ctx x bind'
 
 (* called by the toplevel each time it reads user input data. The line is parsed, a
    list of commands is generated, executed and printed. A new context is returned.

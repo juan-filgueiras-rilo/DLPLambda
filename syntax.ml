@@ -32,7 +32,7 @@ type term =
   | TmFalse of info					(* Boolean False *)
   | TmIf of info * term * term * term			(* If/then/else *)
   | TmVar of info * int * int				(* Variable *)
-  | TmAbs of info * string * term			(* Abstraction *)
+  | TmAbs of info * string * _type * term			(* Abstraction *)
   | TmApp of info * term * term				(* Application *)
   | TmRecord of info * (string * term) list		(* Record *)
   | TmProj of info * term * string			(* Projection *)
@@ -48,7 +48,7 @@ type term =
 (* 2 types of binding. The standalone and the one associated with a term *)
 type binding =
     NameBind 
-  | TmAbbBind of term
+  | TmAbbBind of term * (_type option)
 
 (* The context type, a list of bindings and its symbols *)
 type context = (string * binding) list
@@ -122,7 +122,7 @@ let tmmap onvar c t =
   | TmFalse(fi) as t -> t
   | TmIf(fi,t1,t2,t3) -> TmIf(fi,walk c t1,walk c t2,walk c t3)
   | TmVar(fi,x,n) -> onvar fi c x n
-  | TmAbs(fi,x,t2) -> TmAbs(fi,x,walk (c+1) t2)
+  | TmAbs(fi,x,tp,t2) -> TmAbs(fi,x,tp,walk (c+1) t2)
   | TmApp(fi,t1,t2) -> TmApp(fi,walk c t1,walk c t2)
   | TmProj(fi,t1,l) -> TmProj(fi,walk c t1,l)
   | TmRecord(fi,fields) -> TmRecord(fi,List.map (fun (li,ti) ->
@@ -151,7 +151,7 @@ let termShift d t = termShiftAbove d 0 t
 let bindingshift d bind =
   match bind with
     NameBind -> NameBind
-  | TmAbbBind(t) -> TmAbbBind(termShift d t)
+  | TmAbbBind(t,tp) -> TmAbbBind(termShift d t,tp)
 
 (** ---------------------------------------------------------------------- **)
 (** Context management (2) **)
@@ -169,8 +169,15 @@ let rec getbinding fi ctx i =
       error fi (msg i (List.length ctx))
 
 let searchFromContextTerm fi ctx i = match getbinding fi ctx i with
-    TmAbbBind(t) -> t
+    TmAbbBind(t,tp) -> t
   | _ -> error fi ("searchFromContextType: No term for binding " ^ (index2name fi ctx i))
+
+let searchFromContextType fi ctx i = match getbinding fi ctx i with
+    TmAbbBind(t,tp) -> match tp with
+      None -> error fi ("searchFromContextType: No type recorded for binding " ^(index2name fi ctx i))
+      | Some(tpT) -> tpT
+  | _ -> error fi ("searchFromContextType: No term for binding " ^ (index2name fi ctx i))
+
 (** ---------------------------------------------------------------------- **)
 (** Substitution **)
 
@@ -194,7 +201,7 @@ let tmInfo t = match t with
   | TmFalse(fi) -> fi
   | TmIf(fi,_,_,_) -> fi
   | TmVar(fi,_,_) -> fi
-  | TmAbs(fi,_,_) -> fi
+  | TmAbs(fi,_,_,_) -> fi
   | TmApp(fi, _, _) -> fi
   | TmProj(fi,_,_) -> fi
   | TmRecord(fi,_) -> fi
@@ -245,7 +252,7 @@ let rec printtm_Term outer ctx t = match t with
        pr " else ";
        printtm_Term false ctx t3;
        cbox()
-  | TmAbs(fi,x,t2) ->
+  | TmAbs(fi,x,_,t2) ->
       (let (ctx',x') = (pickfreshname ctx x) in
             obox(); pr "lambda "; pr "%s" x'; pr ". ";
             if (small t2) && not outer then break() else print_space();
@@ -317,14 +324,19 @@ and printtm_ATerm outer ctx t = match t with
 
 let printtm ctx t = printtm_Term true ctx t 
 
+let rec prtype ctx tp = match tp with
+    TpBool -> pr "Bool"
+    | TpNat -> pr "Nat"
+    | TpApp(tpT1,tpT2) -> prtype ctx tpT1; pr "->"; prtype ctx tpT2 
+    | _ -> pr "lol"
+
+let rec printtype ctx term tp_opt = match tp_opt with
+    None -> ()
+    | Some(tp) -> prtype ctx tp
+
 (* prbinding prints a binding depending on its type. In case it's of type
    NameBind, nothing is printed and unit is returned. For TmAbbBind type,
    the equals symbol and the binding's term are printed *)
 let prbinding ctx b = match b with
     NameBind -> ()
-  | TmAbbBind(t) -> pr "= "; printtm ctx t 
-
-let printtype tp = match tp with
-    TpBool -> pr "Bool"
-  | TpNat -> pr "Nat" 
-  | _ -> pr "lol"
+  | TmAbbBind(t,tp) -> pr "= "; printtm ctx t; pr ":"; printtype ctx t tp
