@@ -52,7 +52,7 @@ let rec eval1 ctx t = match t with
       TmIf(fi, t1', t2, t3)
   | TmVar(fi,n,_) ->
       (match getbinding fi ctx n with
-          TmAbbBind(t,_) -> t 
+          TmAbbBind(Some(t),_) -> t 
         | _ -> raise NoRuleApplies)
   | TmApp(fi,TmAbs(_,x,_,t12),v2) when isval ctx v2 ->
       termSubstTop v2 t12
@@ -109,6 +109,13 @@ let rec eval1 ctx t = match t with
   | TmLet(fi,x,t1,t2) ->
       let t1' = eval1 ctx t1 in
       TmLet(fi, x, t1', t2) 
+  | TmFix(fi,v1) as t when isval ctx v1 ->
+      (match v1 with
+         TmAbs(_,_,_,t12) -> termSubstTop t t12
+       | _ -> raise NoRuleApplies)
+  | TmFix(fi,t1) ->
+      let t1' = eval1 ctx t1
+      in TmFix(fi,t1')
   | _ -> 
       raise NoRuleApplies
 
@@ -128,9 +135,9 @@ let rec eval ctx t =
 
 (* evalbinding evaluates the term contained by the binding until it cannot be evaluated anymore *)
 let evalbinding ctx b = match b with
-    TmAbbBind(t,tp) ->
+    TmAbbBind(Some(t),tp) ->
       let t' = eval ctx t in 
-      TmAbbBind(t',tp)
+      TmAbbBind(Some(t'),tp)
   | bind -> bind
 
 (** ------------------------   TYPING  ------------------------ **)
@@ -165,9 +172,20 @@ let rec gettype ctx t = match t with
         (match tp with
             TpNat -> TpBool
           | _ -> error fi "expected value of type Nat for iszero")
+  | TmString(fi,_) -> TpString
+  | TmFloat(fi,_) -> TpFloat
+  | TmTimesfloat(fi,t1,t2) ->
+      let tpT1 = (gettype ctx t1) in
+      let tpT2 = (gettype ctx t2) in
+      if tpT1 = TpFloat
+      then 
+        if tpT2 = TpFloat 
+        then TpFloat
+        else error fi "second argument of timesfloat is not a Float"
+      else error fi "first argument of timesfloat is not a Float"
   | TmVar(fi,i,_) -> searchFromContextType fi ctx i
   | TmAbs(fi,x,tpT1,t1) ->
-      let ctx' = addbinding ctx x (TmAbbBind(t1,Some(tpT1))) in
+      let ctx' = addbinding ctx x (TmAbbBind(None,(Some(tpT1)))) in
       let tpT2 = gettype ctx' t1 in
         TpApp(tpT1,tpT2) 
   | TmApp(fi,t1,t2) -> 
@@ -178,3 +196,25 @@ let rec gettype ctx t = match t with
             if tpT2 = tpT11 then tpT12
             else error fi "input parameter doesn't match"
         | _ -> error fi "expected type for application")
+  | TmLet(fi,x,t1,t2) ->
+      let tpT1 = gettype ctx t1 in
+      let ctx' = addbinding ctx x (TmAbbBind(Some(t1),(Some(tpT1)))) in         
+        gettype ctx' t2
+  | TmRecord(fi, fields) ->
+      let fieldtypes = 
+      (*Mapeo cada tipo de termino en un tipo registro*)
+        List.map (fun (li,ti) -> (li, gettype ctx ti)) fields in
+      TpRecord(fieldtypes)
+  | TmProj(fi, t1, l) ->
+      (match gettype ctx t1 with
+          TpRecord(fieldtys) ->
+            (try List.assoc l fieldtys
+             with Not_found -> error fi ("label "^l^" not found"))
+        | _ -> error fi "Expected record type")
+  | TmFix(fi, t1) ->
+      let tpT1 = gettype ctx t1 in
+      (match tpT1 with
+          TpApp(tpT11,tpT12) ->
+            if (tpT12) = (tpT11) then tpT12
+            else error fi "result of body not compatible with domain"
+        | _ -> error fi "arrow type expected")

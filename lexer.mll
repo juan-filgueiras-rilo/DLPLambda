@@ -25,6 +25,7 @@ let reservedWords = [
   ("true", fun i -> Parser.TRUE i);
   ("false", fun i -> Parser.FALSE i);
   ("lambda", fun i -> Parser.LAMBDA i);
+  ("letrec", fun i -> Parser.LETREC i);
   ("timesfloat", fun i -> Parser.TIMESFLOAT i);
   ("succ", fun i -> Parser.SUCC i);
   ("pred", fun i -> Parser.PRED i);
@@ -73,6 +74,8 @@ let reservedWords = [
   (*Types*)
   ("Bool", fun i -> Parser.TBOOL i);
   ("Nat", fun i -> Parser.TNAT i);
+  ("String", fun i -> Parser.TSTRING i);
+  ("Float", fun i -> Parser.TFLOAT i);
 
 ]
 

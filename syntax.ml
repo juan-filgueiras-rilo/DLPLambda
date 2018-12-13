@@ -24,6 +24,10 @@ open Support.Pervasive
 type _type =
     TpBool
   | TpNat
+  | TpString
+  | TpFloat
+  | TpRecord of (string * _type) list
+  | TpVar of int * int
   | TpApp of _type * _type
 
 (* Terms recognized by the program *)
@@ -44,11 +48,12 @@ type term =
   | TmPred of info * term				(* Predecessor *)
   | TmIsZero of info * term				(* IsZero *)
   | TmLet of info * string * term * term		(* Local variable *)
+  | TmFix of info * term
 
 (* 2 types of binding. The standalone and the one associated with a term *)
 type binding =
     NameBind 
-  | TmAbbBind of term * (_type option)
+  | TmAbbBind of (term option) * (_type option)
 
 (* The context type, a list of bindings and its symbols *)
 type context = (string * binding) list
@@ -114,15 +119,28 @@ let rec name2index fi ctx x =
 
 (** ---------------------------------------------------------------------- **)
 (** Shifting **)
-
+let tpmap onvar c tpT = 
+  let rec walk c tpT = match tpT with
+    TpVar(x,n) -> onvar c x n
+  | TpString -> TpString
+  | TpRecord(fieldtps) -> 
+    TpRecord(
+      List.map (fun (li,tpTi) -> 
+        (li, walk c tpTi)) fieldtps)
+  | TpFloat -> TpFloat
+  | TpBool -> TpBool
+  | TpNat -> TpNat
+  | TpApp(tpT1,tpT2) -> TpApp(walk c tpT1,walk c tpT2)
+(*   | TpVariant(fieldtps) -> TpVariant(List.map (fun (li,tpTi) -> (li, walk c tpTi)) fieldtps)
+  *) in walk c tpT
 (* defines behaviour when shifting each of the term 'types' *)
-let tmmap onvar c t = 
+let tmmap onvar ontype c t = 
   let rec walk c t = match t with
     TmTrue(fi) as t -> t
   | TmFalse(fi) as t -> t
   | TmIf(fi,t1,t2,t3) -> TmIf(fi,walk c t1,walk c t2,walk c t3)
   | TmVar(fi,x,n) -> onvar fi c x n
-  | TmAbs(fi,x,tp,t2) -> TmAbs(fi,x,tp,walk (c+1) t2)
+  | TmAbs(fi,x,tp,t2) -> TmAbs(fi,x,ontype c tp,walk (c+1) t2)
   | TmApp(fi,t1,t2) -> TmApp(fi,walk c t1,walk c t2)
   | TmProj(fi,t1,l) -> TmProj(fi,walk c t1,l)
   | TmRecord(fi,fields) -> TmRecord(fi,List.map (fun (li,ti) ->
@@ -136,14 +154,21 @@ let tmmap onvar c t =
   | TmPred(fi,t1)   -> TmPred(fi, walk c t1)
   | TmIsZero(fi,t1) -> TmIsZero(fi, walk c t1)
   | TmLet(fi,x,t1,t2) -> TmLet(fi,x,walk c t1,walk (c+1) t2)
+  | TmFix(fi,t1) -> TmFix(fi,walk c t1)
   in walk c t
 
+let typeShiftAbove d c tpT =
+  tpmap
+    (fun c x n -> if x>=c then TpVar(x+d,n+d) else TpVar(x,n+d))
+    c tpT
 (* defines an onvar function that is passed to tmmap and calls tmmap *)
 let termShiftAbove d c t =
   tmmap
     (fun fi c x n -> if x>=c then TmVar(fi,x+d,n+d) else TmVar(fi,x,n+d))
+    (typeShiftAbove d)
     c t
 
+let typeShift d tpT = typeShiftAbove d 0 tpT
 (* calls termShiftAbove with c = 0 *)
 let termShift d t = termShiftAbove d 0 t
 
@@ -151,8 +176,10 @@ let termShift d t = termShiftAbove d 0 t
 let bindingshift d bind =
   match bind with
     NameBind -> NameBind
-  | TmAbbBind(t,tp) -> TmAbbBind(termShift d t,tp)
-
+  | TmAbbBind(Some(t),Some(tp)) -> TmAbbBind(Some(termShift d t),Some(typeShift d tp))
+  | TmAbbBind(None,Some(tp)) -> TmAbbBind(None,Some(typeShift d tp))
+  | TmAbbBind(Some(t),None) -> TmAbbBind(Some(termShift d t), None)
+  | TmAbbBind(None,None) -> TmAbbBind(None,None)
 (** ---------------------------------------------------------------------- **)
 (** Context management (2) **)
 
@@ -169,14 +196,13 @@ let rec getbinding fi ctx i =
       error fi (msg i (List.length ctx))
 
 let searchFromContextTerm fi ctx i = match getbinding fi ctx i with
-    TmAbbBind(t,tp) -> t
+    TmAbbBind(Some(t),_) -> t
   | _ -> error fi ("searchFromContextType: No term for binding " ^ (index2name fi ctx i))
 
 let searchFromContextType fi ctx i = match getbinding fi ctx i with
-    TmAbbBind(t,tp) -> match tp with
-      None -> error fi ("searchFromContextType: No type recorded for binding " ^(index2name fi ctx i))
-      | Some(tpT) -> tpT
-  | _ -> error fi ("searchFromContextType: No term for binding " ^ (index2name fi ctx i))
+    TmAbbBind(_,None) -> error fi ("searchFromContextType: No type recorded for binding " ^(index2name fi ctx i))
+  | TmAbbBind(_, Some(tpT)) -> tpT
+  | _ -> error fi ("searchFromContextType: No type for binding " ^ (index2name fi ctx i))
 
 (** ---------------------------------------------------------------------- **)
 (** Substitution **)
@@ -185,12 +211,28 @@ let searchFromContextType fi ctx i = match getbinding fi ctx i with
 let termSubst j s t =
   tmmap
     (fun fi c x n -> if x=j+c then termShift c s else TmVar(fi,x,n))
-    0
+    (fun j tyT -> tyT)
+    j
     t
 
 (* defines a shift, then performs substitution, then shifts back *)
 let termSubstTop s t = 
   termShift (-1) (termSubst 0 (termShift 1 s) t)
+
+let typeSubst tpS j tpT =
+  tpmap
+    (fun j x n -> if x=j then (typeShift j tpS) else (TpVar(x,n)))
+    j tpT
+
+let typeSubstTop tpS tpT = 
+  typeShift (-1) (typeSubst (typeShift 1 tpS) 0 tpT)
+
+let rec tptermSubst tpS j t =
+  tmmap (fun fi c x n -> TmVar(fi,x,n))
+        (fun j tpT -> typeSubst tpS j tpT) j t
+
+let tptermSubstTop tpS t = 
+  termShift (-1) (tptermSubst (typeShift 1 tpS) 0 t)
 
 (** ---------------------------------------------------------------------- **)
 (** Extracting file info **)
@@ -212,7 +254,8 @@ let tmInfo t = match t with
   | TmSucc(fi,_) -> fi
   | TmPred(fi,_) -> fi
   | TmIsZero(fi,_) -> fi
-  | TmLet(fi,_,_,_) -> fi 
+  | TmLet(fi,_,_,_) -> fi
+  | TmFix(fi,_) -> fi 
 
 (** ---------------------------------------------------------------------- **)
 (** Printing **)
@@ -327,6 +370,19 @@ let printtm ctx t = printtm_Term true ctx t
 let rec prtype ctx tp = match tp with
     TpBool -> pr "Bool"
     | TpNat -> pr "Nat"
+    | TpString -> pr "String"
+    | TpFloat -> pr "Float"
+    | TpRecord(fields) ->
+        let pf i (li,tpTi) =
+          if (li <> ((string_of_int i))) then (pr "%s" li; pr ":"); 
+          prtype ctx tpTi 
+        in let rec p i l = match l with 
+            [] -> ()
+          | [f] -> pf i f
+          | f::rest ->
+              pf i f; pr","; print_space(); 
+              p (i+1) rest
+        in pr "{"; open_hovbox 0; p 1 fields; pr "}"; cbox()
     | TpApp(tpT1,tpT2) -> prtype ctx tpT1; pr "->"; prtype ctx tpT2 
     | _ -> pr "lol"
 
@@ -339,4 +395,5 @@ let rec printtype ctx term tp_opt = match tp_opt with
    the equals symbol and the binding's term are printed *)
 let prbinding ctx b = match b with
     NameBind -> ()
-  | TmAbbBind(t,tp) -> pr "= "; printtm ctx t; pr ":"; printtype ctx t tp
+  | TmAbbBind(Some(t),tp) -> pr "= "; printtm ctx t; pr ":"; printtype ctx t tp
+  | TmAbbBind(None,_) -> ()

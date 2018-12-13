@@ -13,6 +13,10 @@ open Support.Error
 type _type =
     TpBool
   | TpNat
+  | TpString
+  | TpFloat
+  | TpRecord of (string * _type) list
+  | TpVar of int * int
   | TpApp of _type * _type
 
 (** Data type definitions **)
@@ -33,11 +37,12 @@ type term =
   | TmPred of info * term
   | TmIsZero of info * term
   | TmLet of info * string * term * term
+  | TmFix of info * term
 
 type binding =
     NameBind 
-  | TmAbbBind of term * (_type option)(* 
-  | TypeBind of _type *)
+  | TmAbbBind of (term option) * (_type option)(* 
+  | TypeBind of _type*)
 
 type command =
   | Eval of info * term
@@ -59,6 +64,9 @@ val searchFromContextType : info -> context -> int -> _type
 (** Shifting and substitution **)
 val termShift: int -> term -> term
 val termSubstTop: term -> term -> term
+val typeShift : int -> _type -> _type
+val typeSubstTop: _type -> _type -> _type
+val tptermSubstTop: _type -> term -> term
 
 (** Printing **)
 val printtm: context -> term -> unit

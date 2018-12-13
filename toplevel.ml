@@ -54,11 +54,9 @@ in
 
 let checkbinding fi ctx b = match b with
     NameBind -> NameBind
-  | TmAbbBind(t,None) -> TmAbbBind(t, Some(gettype ctx t))
-  | TmAbbBind(t,Some(tyT)) -> TmAbbBind(t,Some(tyT))(* 
-     let tyT' = gettype ctx t in
-     if tyeqv ctx tyT' tyT then TmAbbBind(t,Some(tyT))
-     else error fi "Type of binding does not match declared type" *)
+  | TmAbbBind(Some(t),None) -> TmAbbBind(Some(t), Some(gettype ctx t))
+  | TmAbbBind(t,Some(tyT)) -> TmAbbBind(t,Some(tyT))
+  | TmAbbBind(None,None) -> TmAbbBind(None,None)
 
 (* processes the given command. Used by both methods process_file and process_line.
    Results are printed a new context is returned *)

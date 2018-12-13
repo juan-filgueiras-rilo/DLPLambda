@@ -42,10 +42,12 @@ open Core
 %token <Support.Error.info> ISZERO
 %token <Support.Error.info> LET
 %token <Support.Error.info> IN
+%token <Support.Error.info> LETREC
 
 %token <Support.Error.info> TBOOL
 %token <Support.Error.info> TNAT
-
+%token <Support.Error.info> TSTRING
+%token <Support.Error.info> TFLOAT
 
 /* Identifier and constant value tokens */
 %token <string Support.Error.withinfo> UCID  /* uppercase-initial */
@@ -143,6 +145,10 @@ AType :
     {fun ctx -> TpBool}
   | TNAT
     {fun ctx -> TpNat}
+  | TSTRING
+    {fun ctx -> TpString}
+  | TFLOAT
+    {fun ctx -> TpFloat}  
 
 AppType :
   AType ARROW AppType
@@ -170,7 +176,7 @@ Binder :
   | EQ Term
     /* If the binder is in the form "= Term", it is returned as 
       a TmAbbBind of Term on current context. */
-      { fun ctx -> TmAbbBind($2 ctx, None) }
+      { fun ctx -> TmAbbBind(Some($2 ctx), None) }
 
 Term :
     AppTerm
@@ -198,7 +204,11 @@ Term :
   | LET USCORE EQ Term IN Term
     /* If a "let-in" is fed an underscore it simply disregards the variable name */
       { fun ctx -> TmLet($1, "_", $4 ctx, $6 (addname ctx "_")) }
-
+  | LETREC LCID COLON Type EQ Term IN Term
+      { fun ctx -> 
+          let ctx1 = addname ctx $2.v in 
+          TmLet($1, $2.v, TmFix($1, TmAbs($1, $2.v, $4 ctx, $6 ctx1)),
+                $8 ctx1) }
 AppTerm :
     PathTerm
       /* A parsed PathTerm is returned as-is */

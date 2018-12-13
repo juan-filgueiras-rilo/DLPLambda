@@ -47,3 +47,8 @@ factaux = lambda f . ( lambda n . ( if (iszero n) then 1 else times n ( f (pred 
 fact = fix factaux;
 
 fact 3;
+
+a = lambda x:Nat.succ x;
+b = lambda x:Bool.x;
+alpha = let x = false in if b x then a 10 else a 11;
+
