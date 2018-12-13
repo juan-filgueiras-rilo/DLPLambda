@@ -383,8 +383,15 @@ let rec prtype ctx tp = match tp with
               pf i f; pr","; print_space(); 
               p (i+1) rest
         in pr "{"; open_hovbox 0; p 1 fields; pr "}"; cbox()
-    | TpApp(tpT1,tpT2) -> prtype ctx tpT1; pr "->"; prtype ctx tpT2 
-    | _ -> pr "lol"
+    | TpApp(tpT1,tpT2) -> prtype ctx tpT1; pr "->"; prtype ctx tpT2
+    | TpVar(x,n) ->
+      if ctxlength ctx = n then
+        pr "%s"(index2name dummyinfo ctx x)
+      else
+        pr "%s" ("[bad index: " ^ (string_of_int x) ^ "/" ^ (string_of_int n)
+            ^ " in {"
+            ^ (List.fold_left (fun s (x,_) -> s ^ " " ^ x) "" ctx)
+            ^ " }]")
 
 let rec printtype ctx term tp_opt = match tp_opt with
     None -> ()

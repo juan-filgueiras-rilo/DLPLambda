@@ -195,7 +195,7 @@ let rec gettype ctx t = match t with
           TpApp(tpT11,tpT12) -> 
             if tpT2 = tpT11 then tpT12
             else error fi "input parameter doesn't match"
-        | _ -> error fi "expected type for application")
+        | _ -> error fi "arrow type expected")
   | TmLet(fi,x,t1,t2) ->
       let tpT1 = gettype ctx t1 in
       let ctx' = addbinding ctx x (TmAbbBind(Some(t1),(Some(tpT1)))) in         
