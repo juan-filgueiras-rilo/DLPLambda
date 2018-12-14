@@ -141,6 +141,8 @@ let evalbinding ctx b = match b with
   | bind -> bind
 
 (** ------------------------   TYPING  ------------------------ **)
+
+(* gettype evaluates the base types derived from the terms *)
 let rec gettype ctx t = match t with
     TmTrue(fi) ->
       TpBool

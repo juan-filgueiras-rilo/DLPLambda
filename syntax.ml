@@ -53,7 +53,7 @@ type term =
 (* 2 types of binding. The standalone and the one associated with a term *)
 type binding =
     NameBind 
-  | TmAbbBind of (term option) * (_type option)
+  | TmAbbBind of (term option) * (_type option) (* binding modified with the inclusion of types*)
 
 (* The context type, a list of bindings and its symbols *)
 type context = (string * binding) list
@@ -372,6 +372,8 @@ let rec prtype ctx tp = match tp with
     | TpNat -> pr "Nat"
     | TpString -> pr "String"
     | TpFloat -> pr "Float"
+
+    (* print one by one the TpRecord elements *)
     | TpRecord(fields) ->
         let pf i (li,tpTi) =
           if (li <> ((string_of_int i))) then (pr "%s" li; pr ":"); 
@@ -393,6 +395,7 @@ let rec prtype ctx tp = match tp with
             ^ (List.fold_left (fun s (x,_) -> s ^ " " ^ x) "" ctx)
             ^ " }]")
 
+(* printtype calls the prtype function to print types on screen*)
 let rec printtype ctx term tp_opt = match tp_opt with
     None -> ()
     | Some(tp) -> prtype ctx tp
@@ -402,5 +405,5 @@ let rec printtype ctx term tp_opt = match tp_opt with
    the equals symbol and the binding's term are printed *)
 let prbinding ctx b = match b with
     NameBind -> ()
-  | TmAbbBind(Some(t),tp) -> pr "= "; printtm ctx t; pr ":"; printtype ctx t tp
+  | TmAbbBind(Some(t),tp) -> pr "= "; printtm ctx t; pr ":"; printtype ctx t tp 
   | TmAbbBind(None,_) -> ()

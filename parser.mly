@@ -186,6 +186,8 @@ Term :
     /* An "if-then-else" Term is returned as a TmIf command 
       to evaluate the Terms on current context. */
       { fun ctx -> TmIf($1, $2 ctx, $4 ctx, $6 ctx) }
+
+  (* Lambda abstractions modified with new types *)
   | LAMBDA LCID COLON Type DOT Term 
     /* An abstraction matching "lambda word . Term" adds word to the context
       and returns a TmAbs with the word and term on the new context. */
@@ -204,6 +206,8 @@ Term :
   | LET USCORE EQ Term IN Term
     /* If a "let-in" is fed an underscore it simply disregards the variable name */
       { fun ctx -> TmLet($1, "_", $4 ctx, $6 (addname ctx "_")) }
+
+  (* The rule that will allow us to recursion within an abstraction*)
   | LETREC LCID COLON Type EQ Term IN Term
       { fun ctx -> 
           let ctx1 = addname ctx $2.v in 
