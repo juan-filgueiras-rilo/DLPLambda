@@ -1,0 +1,60 @@
+true;
+if true then true else false;
+
+if 2 then true else false;
+if true then 2 else false;
+2;
+succ 2;
+succ true;
+succ (pred 10);
+if true then iszero(succ 0) else iszero(pred 1);
+
+
+lambda x:Bool. x;
+lambda _:Nat. true;
+lambda x:Bool. if x then 10 else 20;
+lambda x:Bool. (lambda y:Nat. if x then y else succ y);
+
+(lambda x:Bool. if x then 10 else 20) true;
+(lambda x:Bool. if x then 10 else 20) 10;
+10 20;
+(lambda x:Bool. lambda y:Nat. if x then y else succ y) false 20;
+
+x = 10;
+x;
+x = lambda x:Bool. if x then 10 else 12;
+x true;
+let x = 10 in (succ x);
+let y=12 in let a=10 in lambda x:Nat. lambda a:Nat. if true then (succ a) else (pred y);
+fun = let y=12 in let a=10 in lambda x:Nat. lambda a:Nat. if true then (succ a) else (pred y);
+fun 10 12;
+lambda x:Bool. lambda x:Nat. pred x;
+
+
+letrec sum:Nat -> Nat -> Nat = lambda n:Nat.lambda m:Nat. if iszero n then m else succ(sum (pred n) m) in sum 2 3;
+letrec sum_1:Nat -> Nat -> Nat = lambda n:Nat.lambda m:Nat. if iszero n then m else succ(sum_1 (pred n) m) in letrec sum_2:Nat->Nat->Nat = lambda n:Nat.lambda m:Nat. if iszero n then m else succ (sum_2(pred n) m) in sum_2 (sum_1 4 5) 9;
+
+
+0.2;
+timesfloat 10.0 2.5;
+ult = lambda x:Float. lambda y:Float. timesfloat x y;
+timesfloat true 10.0;
+timesfloat 10.0 true;
+
+"Hola Mundo";
+let x="hola" in x;
+echo = lambda x:String. x;
+echo "10";
+
+{};
+rec = {1,"hola",10.0,true};
+rec.1;
+rec.etiqueta;
+rec = {nat=1,string="hola",10.0,bool=true};
+rec.nat;
+rec.1;
+rec.3;
+rec = {lambda x:Nat. iszero x, let x=10 in succ x};
+rec.1;
+rec.1 0;
+rec = {lambda x:Nat. iszero x, let x=10 in succ x, letrec sum:Nat->Nat->Nat = lambda m:Nat. lambda n:Nat. if iszero n then m else succ (sum (pred n) m) in sum 10 20};
