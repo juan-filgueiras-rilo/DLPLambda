@@ -1,5 +1,6 @@
 true;
 if true then true else false;
+
 if 2 then true else false;
 if true then 2 else false;
 2;
@@ -35,20 +36,21 @@ letrec sum_1:Nat -> Nat -> Nat = lambda n:Nat.lambda m:Nat. if iszero n then m e
 
 
 0.2;
-imesfloat 10.0 2.5;
+timesfloat 10.0 2.5;
 ult = lambda x:Float. lambda y:Float. timesfloat x y;
 timesfloat true 10.0;
 timesfloat 10.0 true;
-“Hola Mundo”;
-let x=”hola” in x;
-cho = lambda x:String. x;
-echo “10”;
+
+"Hola Mundo";
+let x="hola" in x;
+echo = lambda x:String. x;
+echo "10";
 
 {};
-rec = {1,”hola”,10.0,true};
+rec = {1,"hola",10.0,true};
 rec.1;
-rec.etiqueta
-rec = {nat=1,string=”hola”,10.0,bool=true};
+rec.etiqueta;
+rec = {nat=1,string="hola",10.0,bool=true};
 rec.nat;
 rec.1;
 rec.3;
