@@ -187,7 +187,7 @@ let rec gettype ctx t = match t with
   | TmAbs(fi,x,tpT1,t1) ->
       let ctx' = addbinding ctx x (TmAbbBind(None,(Some(tpT1)))) in
       let tpT2 = gettype ctx' t1 in
-        TpApp(tpT1,tpT2) 
+        TpApp(tpT1, typeShift (-1) tpT2) 
   | TmApp(fi,t1,t2) -> 
       let tpT1 = (gettype ctx t1) in
       let tpT2 = (gettype ctx t2) in

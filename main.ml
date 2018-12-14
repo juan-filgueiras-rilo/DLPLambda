@@ -80,7 +80,7 @@ let alreadyImported = ref ([] : string list)
 (* processes the given command. Used by both methods process_file and process_line.
    Results are printed a new context is returned *)
 let rec process_command ctx cmd = match cmd with
-  | Eval(fi,t) -> 
+  | Eval(fi,t) ->
       let tp = gettype ctx t in
       let t' = eval ctx t in
       printtm_ATerm true ctx t'; 
@@ -90,8 +90,10 @@ let rec process_command ctx cmd = match cmd with
       force_newline();
       ctx
   | Bind(fi,x,bind) -> 
+      let bind = checkbinding fi ctx bind in
       let bind' = evalbinding ctx bind in
-      pr "%s" x; pr " "; prbinding ctx bind'; force_newline(); 
+      pr "%s" x; pr " "; prbinding ctx bind'; (* prbindingtype ctx bind';*)force_newline(); 
+      update_identifiers x bind';
       addbinding ctx x bind'
 
 (* called if a file is specified to be processed. The file is parsed, a list of commands 
